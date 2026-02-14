@@ -402,25 +402,20 @@
     color: var(--green-muted); opacity: 0.7;
   }
 
-  .constellation-controls{
-    display:flex; gap:12px; margin-top: 14px;
-    align-items:center; justify-content:center;
-  }
-  .mini-btn{
+  .constellation-controls { display: flex; gap: 10px; margin-top: 6px; }
+  .constellation-btn {
+    background: rgba(18, 14, 26, 0.65);
+    border: 0.5px solid rgba(123, 47, 190, 0.25);
+    color: var(--purple-light);
+    padding: 10px 14px; border-radius: 999px;
     font-family: 'Raleway', sans-serif; font-weight: 200;
     font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
-    padding: 10px 14px; border-radius: 999px;
-    border: 1px solid rgba(123, 47, 190, 0.25);
-    background: rgba(16, 10, 24, 0.25);
-    color: var(--green-soft);
-    cursor: pointer;
-    transition: transform .25s ease, opacity .25s ease, background .25s ease;
-    backdrop-filter: blur(8px);
+    cursor: pointer; backdrop-filter: blur(10px);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   }
-  .mini-btn:hover{ transform: translateY(-1px); }
-  .mini-btn:active{ transform: translateY(0px) scale(0.98); opacity: .9; }
-  .mini-btn:focus-visible{ outline: 2px solid var(--green-soft); outline-offset: 4px; }
-  .mini-btn:disabled{ opacity: .4; cursor: default; transform: none; }
+  .constellation-btn:hover { transform: translateY(-1px); box-shadow: 0 0 18px rgba(123, 47, 190, 0.35); border-color: rgba(123, 47, 190, 0.45); }
+  .constellation-btn:active { transform: translateY(0); }
+  .constellation-btn:focus-visible { outline: 2px solid var(--green-soft); outline-offset: 3px; }
 
   /* ── Finale ── */
   .finale {
@@ -578,7 +573,7 @@
   <section class="section reveal">
     <div class="section-label">the distance between us</div>
     <div class="miles-display">
-      <div class="miles-number" id="milesNumber">1,200</div>
+      <div class="miles-number" id="milesNumber">862</div>
       <div class="miles-label">Miles Apart</div>
       <div class="miles-connector">
         <svg viewBox="0 0 400 60" preserveAspectRatio="none">
@@ -773,11 +768,11 @@
       We were always written in the stars. This space is ours — place them wherever you want. Build something only we understand.
     </p>
     <canvas id="constellation-canvas"></canvas>
-    <div class="constellation-hint">tap the sky above to place our stars</div>
     <div class="constellation-controls" aria-label="Constellation controls">
-      <button type="button" class="mini-btn" id="conUndo" aria-label="Undo last star">undo</button>
-      <button type="button" class="mini-btn" id="conClear" aria-label="Clear constellation">clear</button>
+      <button class="constellation-btn" id="undoConstellation" type="button">Undo</button>
+      <button class="constellation-btn" id="clearConstellation" type="button">Clear</button>
     </div>
+    <div class="constellation-hint">tap the sky above to place our stars</div>
   </section>
 
   <!-- ── FINALE ── -->
@@ -810,9 +805,9 @@ document.addEventListener('visibilitychange', () => { running = !document.hidden
 
 // ── Config (easy tweaks) ──
 const CONFIG = {
-  milesApart: 1200,
-  // ★ CHANGE THIS to the date she visited Arizona ★
-  arizonaStartISO: '2025-02-14T00:00:00-07:00'
+  milesApart: 862,
+  // ★ Counter start time (America/Los_Angeles) ★
+  arizonaStartISO: '2025-03-19T11:32:00-07:00'
 };
 
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -963,29 +958,6 @@ const conCtx = conCanvas.getContext('2d');
 const conStars = [], dpr = window.devicePixelRatio || 1;
 conCanvas.width = 300 * dpr; conCanvas.height = 300 * dpr; conCtx.scale(dpr, dpr);
 
-const conUndo = document.getElementById('conUndo');
-const conClear = document.getElementById('conClear');
-
-function updateConButtons() {
-  const has = conStars.length > 0;
-  if (conUndo) conUndo.disabled = !has;
-  if (conClear) conClear.disabled = !has;
-}
-
-function undoCStar() {
-  if (!conStars.length) return;
-  conStars.pop();
-  if (navigator.vibrate) navigator.vibrate(15);
-  drawCon();
-}
-
-function clearCStars() {
-  if (!conStars.length) return;
-  conStars.length = 0;
-  if (navigator.vibrate) navigator.vibrate([30, 40, 30]);
-  drawCon();
-}
-
 function drawCon() {
   conCtx.clearRect(0, 0, 300, 300);
   const bg = conCtx.createRadialGradient(150, 150, 0, 150, 150, 150);
@@ -1008,7 +980,6 @@ function drawCon() {
     conCtx.beginPath(); conCtx.arc(s.x, s.y, 3, 0, Math.PI*2);
     conCtx.fillStyle = ip ? '#c792ea' : '#7dffb3'; conCtx.fill();
   });
-  updateConButtons();
 }
 drawCon();
 
@@ -1016,16 +987,16 @@ function addCStar(x, y) { conStars.push({x, y}); if (navigator.vibrate) navigato
 conCanvas.addEventListener('click', e => { const r = conCanvas.getBoundingClientRect(); addCStar(e.clientX-r.left, e.clientY-r.top); });
 conCanvas.addEventListener('touchstart', e => {
   e.preventDefault();
-  if (e.touches.length >= 2) { clearCStars(); return; }
+  if (e.touches && e.touches.length > 1) { conStars.length = 0; drawCon(); return; }
   const r = conCanvas.getBoundingClientRect(); const t = e.touches[0];
   addCStar(t.clientX-r.left, t.clientY-r.top);
 });
-conCanvas.addEventListener('dblclick', e => { e.preventDefault(); clearCStars(); });
-if (conUndo) conUndo.addEventListener('click', e => { e.preventDefault(); undoCStar(); });
-if (conClear) conClear.addEventListener('click', e => { e.preventDefault(); clearCStars(); });
-
 // ── Music ──
-let audioCtx, isPlaying = false;
+// Blackbird streams from YouTube (no audio files stored in the repo).
+const BLACKBIRD_VIDEO_ID = 'Man4Xw8Xypo';
+let ytIframe = null;
+let audioCtx = null;
+let isPlaying = false;
 const musicBtn = document.getElementById('musicBtn');
 
 function setMusicA11y(playing) {
@@ -1035,27 +1006,93 @@ function setMusicA11y(playing) {
 }
 setMusicA11y(false);
 
-musicBtn?.addEventListener('click', (e) => {
+function ensureYouTubeEmbed() {
+  if (ytIframe) return true;
+  try {
+    const origin = encodeURIComponent(location.origin);
+    const iframe = document.createElement('iframe');
+    iframe.id = 'yt-music';
+    iframe.width = '1';
+    iframe.height = '1';
+    iframe.style.position = 'fixed';
+    iframe.style.left = '-9999px';
+    iframe.style.top = '0';
+    iframe.style.opacity = '0';
+    iframe.style.pointerEvents = 'none';
+    iframe.setAttribute('title', 'Blackbird audio');
+    iframe.setAttribute('allow', 'autoplay; encrypted-media');
+    iframe.setAttribute('referrerpolicy', 'origin-when-cross-origin');
+    // autoplay=1 makes the very first click reliably start audio on most browsers
+    iframe.src = `https://www.youtube.com/embed/${BLACKBIRD_VIDEO_ID}?autoplay=1&controls=0&rel=0&playsinline=1&enablejsapi=1&origin=${origin}`;
+    document.body.appendChild(iframe);
+    ytIframe = iframe;
+    return true;
+  } catch (err) {
+    ytIframe = null;
+    return false;
+  }
+}
+
+function ytCommand(func) {
+  if (!ytIframe || !ytIframe.contentWindow) return false;
+  ytIframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func, args: [] }), '*');
+  return true;
+}
+
+// Optional fallback (keeps the button doing *something* if embeds are blocked)
+function startFallbackChord() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const master = audioCtx.createGain(); master.gain.value = 0.1; master.connect(audioCtx.destination);
+  // Am chord — gentle, yearning
+  [220, 261.63, 329.63, 440].forEach((freq, i) => {
+    const osc = audioCtx.createOscillator(), g = audioCtx.createGain();
+    osc.type = 'sine'; osc.frequency.value = freq; g.gain.value = 0.12 - i * 0.015;
+    const lfo = audioCtx.createOscillator(), lg = audioCtx.createGain();
+    lfo.frequency.value = 0.2 + i * 0.08; lg.gain.value = 1.5;
+    lfo.connect(lg); lg.connect(osc.frequency); lfo.start();
+    osc.connect(g); g.connect(master); osc.start();
+  });
+  const sub = audioCtx.createOscillator(), sg = audioCtx.createGain();
+  sub.type = 'sine'; sub.frequency.value = 110; sg.gain.value = 0.06;
+  sub.connect(sg); sg.connect(master); sub.start();
+}
+function stopFallbackChord() { if (audioCtx) { audioCtx.close(); audioCtx = null; } }
+
+musicBtn?.addEventListener('click', () => {
   const bars = document.getElementById('musicBars');
+  if (!bars) return;
+
   if (!isPlaying) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const master = audioCtx.createGain(); master.gain.value = 0.1; master.connect(audioCtx.destination);
-    // Am chord — emotional, yearning
-    [220, 261.63, 329.63, 440].forEach((freq, i) => {
-      const osc = audioCtx.createOscillator(), g = audioCtx.createGain();
-      osc.type = 'sine'; osc.frequency.value = freq; g.gain.value = 0.12 - i * 0.015;
-      const lfo = audioCtx.createOscillator(), lg = audioCtx.createGain();
-      lfo.frequency.value = 0.2 + i * 0.08; lg.gain.value = 1.5;
-      lfo.connect(lg); lg.connect(osc.frequency); lfo.start();
-      osc.connect(g); g.connect(master); osc.start();
-    });
-    const sub = audioCtx.createOscillator(), sg = audioCtx.createGain();
-    sub.type = 'sine'; sub.frequency.value = 110; sg.gain.value = 0.06;
-    sub.connect(sg); sg.connect(master); sub.start();
-    bars.classList.remove('paused'); isPlaying = true; setMusicA11y(true);
+    const ok = ensureYouTubeEmbed();
+    if (ok) {
+      // If the iframe is already loaded, this toggles reliably; if it's new, autoplay=1 should start it anyway.
+      ytCommand('playVideo');
+      stopFallbackChord();
+    } else {
+      // If YouTube is blocked, at least play the fallback chord.
+      startFallbackChord();
+    }
+    isPlaying = true;
+    bars.classList.remove('paused');
+    setMusicA11y(true);
   } else {
-    if (audioCtx) { audioCtx.close(); audioCtx = null; }
-    bars.classList.add('paused'); isPlaying = false; setMusicA11y(false);
+    if (ytIframe) ytCommand('pauseVideo');
+    stopFallbackChord();
+    isPlaying = false;
+    bars.classList.add('paused');
+    setMusicA11y(false);
+  }
+});
+
+// Pause if the tab is hidden (saves battery and avoids "phantom" audio).
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && isPlaying) {
+    if (ytIframe) ytCommand('pauseVideo');
+    stopFallbackChord();
+    isPlaying = false;
+    document.getElementById('musicBars')?.classList.add('paused');
+    setMusicA11y(false);
   }
 });
 
