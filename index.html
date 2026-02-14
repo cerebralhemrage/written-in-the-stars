@@ -402,20 +402,33 @@
     color: var(--green-muted); opacity: 0.7;
   }
 
-  .constellation-controls { display: flex; gap: 10px; margin-top: 6px; }
-  .constellation-btn {
-    background: rgba(18, 14, 26, 0.65);
-    border: 0.5px solid rgba(123, 47, 190, 0.25);
-    color: var(--purple-light);
-    padding: 10px 14px; border-radius: 999px;
-    font-family: 'Raleway', sans-serif; font-weight: 200;
-    font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
-    cursor: pointer; backdrop-filter: blur(10px);
-    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  
+  .constellation-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    margin: 6px 0 10px;
   }
-  .constellation-btn:hover { transform: translateY(-1px); box-shadow: 0 0 18px rgba(123, 47, 190, 0.35); border-color: rgba(123, 47, 190, 0.45); }
-  .constellation-btn:active { transform: translateY(0); }
-  .constellation-btn:focus-visible { outline: 2px solid var(--green-soft); outline-offset: 3px; }
+  .constellation-btn {
+    font-family: 'Raleway', sans-serif;
+    font-weight: 300;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 10px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(199,146,234,0.28);
+    background: rgba(10,8,20,0.35);
+    color: var(--lavender);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    cursor: pointer;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .constellation-btn:hover { transform: translateY(-1px); border-color: rgba(125,255,179,0.32); box-shadow: 0 10px 24px rgba(57,255,20,0.06); }
+  .constellation-btn:active { transform: translateY(0px) scale(0.98); }
+  .constellation-btn:focus-visible { outline: 2px solid var(--green-soft); outline-offset: 4px; }
 
   /* ── Finale ── */
   .finale {
@@ -513,6 +526,8 @@
   }
   .music-btn:focus-visible { outline: 2px solid var(--green-soft); outline-offset: 4px; }
 
+  #yt-audio { position: fixed; width: 1px; height: 1px; left: -9999px; top: -9999px; opacity: 0; pointer-events: none; }
+
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
     .aurora, .particle { display: none !important; }
@@ -544,6 +559,8 @@
     <div class="music-bar"></div><div class="music-bar"></div>
   </div>
 </button>
+
+<div id="yt-audio" aria-hidden="true"></div>
 
 <canvas id="starfield"></canvas>
 
@@ -768,9 +785,9 @@
       We were always written in the stars. This space is ours — place them wherever you want. Build something only we understand.
     </p>
     <canvas id="constellation-canvas"></canvas>
-    <div class="constellation-controls" aria-label="Constellation controls">
-      <button class="constellation-btn" id="undoConstellation" type="button">Undo</button>
-      <button class="constellation-btn" id="clearConstellation" type="button">Clear</button>
+    <div class="constellation-controls">
+      <button class="constellation-btn" id="conUndo" type="button" aria-label="Undo last star">Undo</button>
+      <button class="constellation-btn" id="conClear" type="button" aria-label="Clear constellation">Clear</button>
     </div>
     <div class="constellation-hint">tap the sky above to place our stars</div>
   </section>
@@ -806,11 +823,17 @@ document.addEventListener('visibilitychange', () => { running = !document.hidden
 // ── Config (easy tweaks) ──
 const CONFIG = {
   milesApart: 862,
-  // ★ Counter start time (America/Los_Angeles) ★
-  arizonaStartISO: '2025-03-19T11:32:00-07:00'
+  // Counter starts from: March 19, 2025 @ 11:32 AM (Pacific)
+  arizonaStartISO: '2025-03-19T11:32:00-07:00',
+  // “Blackbird” (official/remastered upload on YouTube)
+  youtubeVideoId: 'Man4Xw8Xypo'
 };
 
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function haptic(pattern) {
+  try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (_) {}
+}
 
 // Set display values from config
 const milesEl = document.getElementById('milesNumber');
@@ -903,6 +926,7 @@ const opening = document.getElementById('opening');
 const main = document.getElementById('main-content');
 
 function openCard() {
+  haptic(25);
   if (!opening || !main) return;
   opening.classList.add('fade-out');
   opening.setAttribute('aria-hidden', 'true');
@@ -983,21 +1007,44 @@ function drawCon() {
 }
 drawCon();
 
-function addCStar(x, y) { conStars.push({x, y}); if (navigator.vibrate) navigator.vibrate(30); drawCon(); }
+function addCStar(x, y) { conStars.push({x, y}); haptic(30); drawCon(); }
+function undoCStar() {
+  if (!conStars.length) return;
+  conStars.pop();
+  haptic(15);
+  drawCon();
+}
+function clearCStars() {
+  if (!conStars.length) return;
+  conStars.length = 0;
+  haptic([30, 40, 30]);
+  drawCon();
+}
+
+document.getElementById('conUndo')?.addEventListener('click', (e) => { e.preventDefault(); undoCStar(); });
+document.getElementById('conClear')?.addEventListener('click', (e) => { e.preventDefault(); clearCStars(); });
+// Quick gestures
+conCanvas.addEventListener('dblclick', (e) => { e.preventDefault(); clearCStars(); });
+
 conCanvas.addEventListener('click', e => { const r = conCanvas.getBoundingClientRect(); addCStar(e.clientX-r.left, e.clientY-r.top); });
 conCanvas.addEventListener('touchstart', e => {
   e.preventDefault();
-  if (e.touches && e.touches.length > 1) { conStars.length = 0; drawCon(); return; }
-  const r = conCanvas.getBoundingClientRect(); const t = e.touches[0];
-  addCStar(t.clientX-r.left, t.clientY-r.top);
+  if (e.touches && e.touches.length === 2) { clearCStars(); return; }
+  const r = conCanvas.getBoundingClientRect();
+  const t = e.touches[0];
+  addCStar(t.clientX - r.left, t.clientY - r.top);
 });
+
 // ── Music ──
-// Blackbird streams from YouTube (no audio files stored in the repo).
-const BLACKBIRD_VIDEO_ID = 'Man4Xw8Xypo';
-let ytIframe = null;
-let audioCtx = null;
-let isPlaying = false;
+let audioCtx, isPlaying = false;
 const musicBtn = document.getElementById('musicBtn');
+const musicBars = document.getElementById('musicBars');
+
+let ytPlayer = null;
+let ytReady = false;
+let ytFailed = false;
+let ytLoading = false;
+let pendingPlay = false;
 
 function setMusicA11y(playing) {
   if (!musicBtn) return;
@@ -1006,45 +1053,18 @@ function setMusicA11y(playing) {
 }
 setMusicA11y(false);
 
-function ensureYouTubeEmbed() {
-  if (ytIframe) return true;
-  try {
-    const origin = encodeURIComponent(location.origin);
-    const iframe = document.createElement('iframe');
-    iframe.id = 'yt-music';
-    iframe.width = '1';
-    iframe.height = '1';
-    iframe.style.position = 'fixed';
-    iframe.style.left = '-9999px';
-    iframe.style.top = '0';
-    iframe.style.opacity = '0';
-    iframe.style.pointerEvents = 'none';
-    iframe.setAttribute('title', 'Blackbird audio');
-    iframe.setAttribute('allow', 'autoplay; encrypted-media');
-    iframe.setAttribute('referrerpolicy', 'origin-when-cross-origin');
-    // autoplay=1 makes the very first click reliably start audio on most browsers
-    iframe.src = `https://www.youtube.com/embed/${BLACKBIRD_VIDEO_ID}?autoplay=1&controls=0&rel=0&playsinline=1&enablejsapi=1&origin=${origin}`;
-    document.body.appendChild(iframe);
-    ytIframe = iframe;
-    return true;
-  } catch (err) {
-    ytIframe = null;
-    return false;
-  }
+function setMusicVisual(playing) {
+  if (!musicBars) return;
+  musicBars.classList.toggle('paused', !playing);
 }
 
-function ytCommand(func) {
-  if (!ytIframe || !ytIframe.contentWindow) return false;
-  ytIframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func, args: [] }), '*');
-  return true;
-}
-
-// Optional fallback (keeps the button doing *something* if embeds are blocked)
 function startFallbackChord() {
-  if (audioCtx) return;
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  const master = audioCtx.createGain(); master.gain.value = 0.1; master.connect(audioCtx.destination);
-  // Am chord — gentle, yearning
+  const master = audioCtx.createGain();
+  master.gain.value = 0.1;
+  master.connect(audioCtx.destination);
+
+  // Am chord — soft, emotional bed (fallback)
   [220, 261.63, 329.63, 440].forEach((freq, i) => {
     const osc = audioCtx.createOscillator(), g = audioCtx.createGain();
     osc.type = 'sine'; osc.frequency.value = freq; g.gain.value = 0.12 - i * 0.015;
@@ -1053,48 +1073,161 @@ function startFallbackChord() {
     lfo.connect(lg); lg.connect(osc.frequency); lfo.start();
     osc.connect(g); g.connect(master); osc.start();
   });
+
   const sub = audioCtx.createOscillator(), sg = audioCtx.createGain();
   sub.type = 'sine'; sub.frequency.value = 110; sg.gain.value = 0.06;
   sub.connect(sg); sg.connect(master); sub.start();
 }
-function stopFallbackChord() { if (audioCtx) { audioCtx.close(); audioCtx = null; } }
 
-musicBtn?.addEventListener('click', () => {
-  const bars = document.getElementById('musicBars');
-  if (!bars) return;
+function stopFallbackChord() {
+  if (audioCtx) { audioCtx.close(); audioCtx = null; }
+}
 
-  if (!isPlaying) {
-    const ok = ensureYouTubeEmbed();
-    if (ok) {
-      // If the iframe is already loaded, this toggles reliably; if it's new, autoplay=1 should start it anyway.
-      ytCommand('playVideo');
-      stopFallbackChord();
-    } else {
-      // If YouTube is blocked, at least play the fallback chord.
-      startFallbackChord();
+function loadYouTubeAPI() {
+  return new Promise((resolve, reject) => {
+    if (window.YT && window.YT.Player) return resolve();
+
+    // If we're already loading, poll briefly
+    if (ytLoading) {
+      const t = setInterval(() => {
+        if (window.YT && window.YT.Player) { clearInterval(t); resolve(); }
+      }, 50);
+      setTimeout(() => { clearInterval(t); reject(new Error('YouTube API timeout')); }, 9000);
+      return;
     }
+
+    ytLoading = true;
+    const tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    tag.async = true;
+    tag.onerror = () => reject(new Error('YouTube API failed to load'));
+    document.head.appendChild(tag);
+
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => {
+      if (typeof prev === 'function') prev();
+      resolve();
+    };
+
+    setTimeout(() => {
+      if (!(window.YT && window.YT.Player)) reject(new Error('YouTube API timeout'));
+    }, 12000);
+  });
+}
+
+function createYTPlayer() {
+  return new Promise((resolve, reject) => {
+    if (!(window.YT && window.YT.Player)) return reject(new Error('YouTube API missing'));
+    try {
+      ytPlayer = new YT.Player('yt-audio', {
+        height: '1',
+        width: '1',
+        videoId: CONFIG.youtubeVideoId,
+        playerVars: {
+          autoplay: 0,
+          controls: 0,
+          rel: 0,
+          modestbranding: 1,
+          playsinline: 1
+        },
+        events: {
+          onReady: () => resolve(),
+          onError: (e) => reject(e),
+          onStateChange: (e) => {
+            // -1 = unstarted, 0 = ended, 1 = playing, 2 = paused, 3 = buffering
+            if (e.data === 1 || e.data === 3) {
+              isPlaying = true;
+              setMusicVisual(true);
+              setMusicA11y(true);
+            }
+            if (e.data === 0 || e.data === 2) {
+              isPlaying = false;
+              setMusicVisual(false);
+              setMusicA11y(false);
+            }
+          }
+        }
+      });
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+async function ensureYouTubeReady() {
+  if (ytReady || ytFailed) return;
+  try {
+    await loadYouTubeAPI();
+    await createYTPlayer();
+    ytReady = true;
+  } catch (err) {
+    ytFailed = true;
+  }
+}
+
+function tryPlayYT() {
+  try {
+    ytPlayer?.playVideo?.();
+    return true;
+  } catch (_) { return false; }
+}
+function tryPauseYT() {
+  try { ytPlayer?.pauseVideo?.(); } catch (_) {}
+}
+
+musicBtn?.addEventListener('click', async () => {
+  haptic(10);
+
+  // First-time load: try to prepare YouTube and (if allowed) start playing.
+  if (!ytReady && !ytFailed) {
+    pendingPlay = true;
+    await ensureYouTubeReady();
+    if (ytReady && pendingPlay) {
+      pendingPlay = false;
+      const ok = tryPlayYT();
+      if (ok) {
+        isPlaying = true;
+        setMusicVisual(true);
+        setMusicA11y(true);
+        return;
+      }
+    }
+    // If autoplay is blocked, user can tap again.
+    return;
+  }
+
+  // Primary: YouTube “Blackbird”
+  if (ytReady) {
+    if (!isPlaying) {
+      const ok = tryPlayYT();
+      if (ok) {
+        isPlaying = true;
+        setMusicVisual(true);
+        setMusicA11y(true);
+      }
+    } else {
+      tryPauseYT();
+      isPlaying = false;
+      setMusicVisual(false);
+      setMusicA11y(false);
+    }
+    return;
+  }
+
+  // Fallback: gentle chord bed
+  if (!isPlaying) {
+    startFallbackChord();
     isPlaying = true;
-    bars.classList.remove('paused');
+    setMusicVisual(true);
     setMusicA11y(true);
   } else {
-    if (ytIframe) ytCommand('pauseVideo');
     stopFallbackChord();
     isPlaying = false;
-    bars.classList.add('paused');
+    setMusicVisual(false);
     setMusicA11y(false);
   }
 });
 
-// Pause if the tab is hidden (saves battery and avoids "phantom" audio).
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden && isPlaying) {
-    if (ytIframe) ytCommand('pauseVideo');
-    stopFallbackChord();
-    isPlaying = false;
-    document.getElementById('musicBars')?.classList.add('paused');
-    setMusicA11y(false);
-  }
-});
 
 // ── Sparkle burst (tap anywhere while the finale is in view) ──
 const finale = document.querySelector('.finale');
@@ -1125,6 +1258,7 @@ function sparkleBurst(x, y) {
 document.addEventListener('click', (e) => {
   if (!finaleActive) return;
   if (e.target.closest('#musicBtn')) return;
+  haptic(18);
   sparkleBurst(e.clientX, e.clientY);
 });
 </script>
