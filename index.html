@@ -462,6 +462,9 @@
   .music-bars.paused .music-bar { animation: none; height: 3px; }
   @keyframes musicBar { 0%, 100% { height: 4px; } 50% { height: 16px; } }
 
+  /* Hidden YouTube player for background music */
+  #ytWrap { position: fixed; width: 1px; height: 1px; overflow: hidden; left: -9999px; top: -9999px; }
+
   /* ── Aurora ── */
   .aurora {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -529,6 +532,9 @@
     <div class="music-bar"></div><div class="music-bar"></div>
   </div>
 </button>
+
+<!-- YouTube player (hidden; used for music) -->
+<div id="ytWrap" aria-hidden="true"><div id="ytPlayer"></div></div>
 
 <canvas id="starfield"></canvas>
 
@@ -786,9 +792,11 @@ document.addEventListener('visibilitychange', () => { running = !document.hidden
 
 // ── Config (easy tweaks) ──
 const CONFIG = {
-  milesApart: 1200,
+  milesApart: 852,
   // ★ CHANGE THIS to the date she visited Arizona ★
-  arizonaStartISO: '2025-02-14T00:00:00-07:00'
+  arizonaStartISO: '2025-03-19T10:56:00-07:00',
+  // Official YouTube upload ID for: "Blackbird (Remastered 2009)" — The Beatles
+  youtubeVideoId: 'Man4Xw8Xypo'
 };
 
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -972,38 +980,98 @@ conCanvas.addEventListener('touchstart', e => {
 });
 
 // ── Music ──
-let audioCtx, isPlaying = false;
+// Background music is streamed via an official YouTube embed (no audio files are stored in this repo).
+let ytPlayer = null;
+let ytReady = false;
+let isPlaying = false;
+let pendingToggle = false;
+
 const musicBtn = document.getElementById('musicBtn');
+const bars = document.getElementById('musicBars');
 
 function setMusicA11y(playing) {
   if (!musicBtn) return;
   musicBtn.setAttribute('aria-pressed', String(playing));
   musicBtn.setAttribute('aria-label', playing ? 'Pause music' : 'Play music');
 }
-setMusicA11y(false);
 
-musicBtn?.addEventListener('click', (e) => {
-  const bars = document.getElementById('musicBars');
-  if (!isPlaying) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const master = audioCtx.createGain(); master.gain.value = 0.1; master.connect(audioCtx.destination);
-    // Am chord — emotional, yearning
-    [220, 261.63, 329.63, 440].forEach((freq, i) => {
-      const osc = audioCtx.createOscillator(), g = audioCtx.createGain();
-      osc.type = 'sine'; osc.frequency.value = freq; g.gain.value = 0.12 - i * 0.015;
-      const lfo = audioCtx.createOscillator(), lg = audioCtx.createGain();
-      lfo.frequency.value = 0.2 + i * 0.08; lg.gain.value = 1.5;
-      lfo.connect(lg); lg.connect(osc.frequency); lfo.start();
-      osc.connect(g); g.connect(master); osc.start();
+function setMusicUI(playing) {
+  if (bars) bars.classList.toggle('paused', !playing);
+  setMusicA11y(playing);
+}
+
+setMusicUI(false);
+
+// YouTube IFrame API callback
+window.onYouTubeIframeAPIReady = function () {
+  try {
+    ytPlayer = new YT.Player('ytPlayer', {
+      width: '0',
+      height: '0',
+      videoId: CONFIG.youtubeVideoId,
+      playerVars: {
+        autoplay: 0,
+        controls: 0,
+        disablekb: 1,
+        fs: 0,
+        modestbranding: 1,
+        playsinline: 1,
+        rel: 0,
+        iv_load_policy: 3,
+        // Loop requires playlist=videoId
+        loop: 1,
+        playlist: CONFIG.youtubeVideoId,
+        origin: window.location.origin
+      },
+      events: {
+        onReady: () => {
+          ytReady = true;
+          if (pendingToggle) {
+            pendingToggle = false;
+            toggleMusic();
+          }
+        },
+        onStateChange: (e) => {
+          const playing = e.data === YT.PlayerState.PLAYING;
+          if (playing !== isPlaying) {
+            isPlaying = playing;
+            setMusicUI(isPlaying);
+          }
+          if (e.data === YT.PlayerState.ENDED) {
+            isPlaying = false;
+            setMusicUI(false);
+          }
+        }
+      }
     });
-    const sub = audioCtx.createOscillator(), sg = audioCtx.createGain();
-    sub.type = 'sine'; sub.frequency.value = 110; sg.gain.value = 0.06;
-    sub.connect(sg); sg.connect(master); sub.start();
-    bars.classList.remove('paused'); isPlaying = true; setMusicA11y(true);
-  } else {
-    if (audioCtx) { audioCtx.close(); audioCtx = null; }
-    bars.classList.add('paused'); isPlaying = false; setMusicA11y(false);
+  } catch (err) {
+    // If YouTube is blocked/unavailable, keep UI paused.
+    ytReady = false;
+    isPlaying = false;
+    setMusicUI(false);
   }
+};
+
+function toggleMusic() {
+  if (!ytReady || !ytPlayer) return;
+  if (!isPlaying) {
+    ytPlayer.playVideo();
+    isPlaying = true;
+    setMusicUI(true);
+  } else {
+    ytPlayer.pauseVideo();
+    isPlaying = false;
+    setMusicUI(false);
+  }
+}
+
+musicBtn?.addEventListener('click', () => {
+  // If the API hasn't initialized yet, queue the toggle.
+  if (!ytReady || !ytPlayer) {
+    pendingToggle = true;
+    return;
+  }
+  toggleMusic();
 });
 
 // ── Sparkle burst (tap anywhere while the finale is in view) ──
@@ -1038,5 +1106,6 @@ document.addEventListener('click', (e) => {
   sparkleBurst(e.clientX, e.clientY);
 });
 </script>
+<script src="https://www.youtube.com/iframe_api"></script>
 </body>
 </html>
