@@ -402,6 +402,26 @@
     color: var(--green-muted); opacity: 0.7;
   }
 
+  .constellation-controls{
+    display:flex; gap:12px; margin-top: 14px;
+    align-items:center; justify-content:center;
+  }
+  .mini-btn{
+    font-family: 'Raleway', sans-serif; font-weight: 200;
+    font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+    padding: 10px 14px; border-radius: 999px;
+    border: 1px solid rgba(123, 47, 190, 0.25);
+    background: rgba(16, 10, 24, 0.25);
+    color: var(--green-soft);
+    cursor: pointer;
+    transition: transform .25s ease, opacity .25s ease, background .25s ease;
+    backdrop-filter: blur(8px);
+  }
+  .mini-btn:hover{ transform: translateY(-1px); }
+  .mini-btn:active{ transform: translateY(0px) scale(0.98); opacity: .9; }
+  .mini-btn:focus-visible{ outline: 2px solid var(--green-soft); outline-offset: 4px; }
+  .mini-btn:disabled{ opacity: .4; cursor: default; transform: none; }
+
   /* ── Finale ── */
   .finale {
     min-height: 100vh; display: flex; flex-direction: column;
@@ -461,9 +481,6 @@
   .music-bar:nth-child(4) { background: var(--green-soft); height: 11px; animation-delay: 0.45s; }
   .music-bars.paused .music-bar { animation: none; height: 3px; }
   @keyframes musicBar { 0%, 100% { height: 4px; } 50% { height: 16px; } }
-
-  /* Hidden YouTube player for background music */
-  #ytWrap { position: fixed; width: 1px; height: 1px; overflow: hidden; left: -9999px; top: -9999px; }
 
   /* ── Aurora ── */
   .aurora {
@@ -532,9 +549,6 @@
     <div class="music-bar"></div><div class="music-bar"></div>
   </div>
 </button>
-
-<!-- YouTube player (hidden; used for music) -->
-<div id="ytWrap" aria-hidden="true"><div id="ytPlayer"></div></div>
 
 <canvas id="starfield"></canvas>
 
@@ -735,7 +749,8 @@
     <div class="section-label">something I should have written twenty years ago</div>
     <div class="letter-container">
       <div class="letter-text">
-        <p>Hey you,</p
+        <p>Hey you,</p>
+        <p>I've been trying to write this for twenty years. Not because I didn't know what to say — but because every time I tried, the words never felt big enough.</p>
         <p>How do you explain a love that has survived <span class="hl">two decades</span>, <span class="ph">1,200 miles</span>, years of silence, and every reason the universe gave us to walk away?</p>
         <p>You can't. Because it's not a love you explain. It's a love you <span class="hl">survive</span>. And we have — over and over again.</p>
         <p>When you came to Arizona, something shifted inside me. I stopped questioning why we keep finding each other and finally let myself be grateful that we do. That weekend proved what I think we've both always been afraid to say out loud: <span class="ph">this was never nostalgia. This was always real.</span></p>
@@ -759,6 +774,10 @@
     </p>
     <canvas id="constellation-canvas"></canvas>
     <div class="constellation-hint">tap the sky above to place our stars</div>
+    <div class="constellation-controls" aria-label="Constellation controls">
+      <button type="button" class="mini-btn" id="conUndo" aria-label="Undo last star">undo</button>
+      <button type="button" class="mini-btn" id="conClear" aria-label="Clear constellation">clear</button>
+    </div>
   </section>
 
   <!-- ── FINALE ── -->
@@ -791,11 +810,9 @@ document.addEventListener('visibilitychange', () => { running = !document.hidden
 
 // ── Config (easy tweaks) ──
 const CONFIG = {
-  milesApart: 852,
+  milesApart: 1200,
   // ★ CHANGE THIS to the date she visited Arizona ★
-  arizonaStartISO: '2025-03-19T10:56:00-07:00',
-  // Official YouTube upload ID for: "Blackbird (Remastered 2009)" — The Beatles
-  youtubeVideoId: 'Man4Xw8Xypo'
+  arizonaStartISO: '2025-02-14T00:00:00-07:00'
 };
 
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -946,6 +963,29 @@ const conCtx = conCanvas.getContext('2d');
 const conStars = [], dpr = window.devicePixelRatio || 1;
 conCanvas.width = 300 * dpr; conCanvas.height = 300 * dpr; conCtx.scale(dpr, dpr);
 
+const conUndo = document.getElementById('conUndo');
+const conClear = document.getElementById('conClear');
+
+function updateConButtons() {
+  const has = conStars.length > 0;
+  if (conUndo) conUndo.disabled = !has;
+  if (conClear) conClear.disabled = !has;
+}
+
+function undoCStar() {
+  if (!conStars.length) return;
+  conStars.pop();
+  if (navigator.vibrate) navigator.vibrate(15);
+  drawCon();
+}
+
+function clearCStars() {
+  if (!conStars.length) return;
+  conStars.length = 0;
+  if (navigator.vibrate) navigator.vibrate([30, 40, 30]);
+  drawCon();
+}
+
 function drawCon() {
   conCtx.clearRect(0, 0, 300, 300);
   const bg = conCtx.createRadialGradient(150, 150, 0, 150, 150, 150);
@@ -968,109 +1008,55 @@ function drawCon() {
     conCtx.beginPath(); conCtx.arc(s.x, s.y, 3, 0, Math.PI*2);
     conCtx.fillStyle = ip ? '#c792ea' : '#7dffb3'; conCtx.fill();
   });
+  updateConButtons();
 }
 drawCon();
 
 function addCStar(x, y) { conStars.push({x, y}); if (navigator.vibrate) navigator.vibrate(30); drawCon(); }
 conCanvas.addEventListener('click', e => { const r = conCanvas.getBoundingClientRect(); addCStar(e.clientX-r.left, e.clientY-r.top); });
 conCanvas.addEventListener('touchstart', e => {
-  e.preventDefault(); const r = conCanvas.getBoundingClientRect(); const t = e.touches[0];
+  e.preventDefault();
+  if (e.touches.length >= 2) { clearCStars(); return; }
+  const r = conCanvas.getBoundingClientRect(); const t = e.touches[0];
   addCStar(t.clientX-r.left, t.clientY-r.top);
 });
+conCanvas.addEventListener('dblclick', e => { e.preventDefault(); clearCStars(); });
+if (conUndo) conUndo.addEventListener('click', e => { e.preventDefault(); undoCStar(); });
+if (conClear) conClear.addEventListener('click', e => { e.preventDefault(); clearCStars(); });
 
 // ── Music ──
-// Background music is streamed via an official YouTube embed (no audio files are stored in this repo).
-let ytPlayer = null;
-let ytReady = false;
-let isPlaying = false;
-let pendingToggle = false;
-
+let audioCtx, isPlaying = false;
 const musicBtn = document.getElementById('musicBtn');
-const bars = document.getElementById('musicBars');
 
 function setMusicA11y(playing) {
   if (!musicBtn) return;
   musicBtn.setAttribute('aria-pressed', String(playing));
   musicBtn.setAttribute('aria-label', playing ? 'Pause music' : 'Play music');
 }
+setMusicA11y(false);
 
-function setMusicUI(playing) {
-  if (bars) bars.classList.toggle('paused', !playing);
-  setMusicA11y(playing);
-}
-
-setMusicUI(false);
-
-// YouTube IFrame API callback
-window.onYouTubeIframeAPIReady = function () {
-  try {
-    ytPlayer = new YT.Player('ytPlayer', {
-      width: '0',
-      height: '0',
-      videoId: CONFIG.youtubeVideoId,
-      playerVars: {
-        autoplay: 0,
-        controls: 0,
-        disablekb: 1,
-        fs: 0,
-        modestbranding: 1,
-        playsinline: 1,
-        rel: 0,
-        iv_load_policy: 3,
-        // Loop requires playlist=videoId
-        loop: 1,
-        playlist: CONFIG.youtubeVideoId,
-        origin: window.location.origin
-      },
-      events: {
-        onReady: () => {
-          ytReady = true;
-          if (pendingToggle) {
-            pendingToggle = false;
-            toggleMusic();
-          }
-        },
-        onStateChange: (e) => {
-          const playing = e.data === YT.PlayerState.PLAYING;
-          if (playing !== isPlaying) {
-            isPlaying = playing;
-            setMusicUI(isPlaying);
-          }
-          if (e.data === YT.PlayerState.ENDED) {
-            isPlaying = false;
-            setMusicUI(false);
-          }
-        }
-      }
-    });
-  } catch (err) {
-    // If YouTube is blocked/unavailable, keep UI paused.
-    ytReady = false;
-    isPlaying = false;
-    setMusicUI(false);
-  }
-};
-
-function toggleMusic() {
-  if (!ytReady || !ytPlayer) return;
+musicBtn?.addEventListener('click', (e) => {
+  const bars = document.getElementById('musicBars');
   if (!isPlaying) {
-    ytPlayer.playVideo();
-    isPlaying = true;
-    setMusicUI(true);
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const master = audioCtx.createGain(); master.gain.value = 0.1; master.connect(audioCtx.destination);
+    // Am chord — emotional, yearning
+    [220, 261.63, 329.63, 440].forEach((freq, i) => {
+      const osc = audioCtx.createOscillator(), g = audioCtx.createGain();
+      osc.type = 'sine'; osc.frequency.value = freq; g.gain.value = 0.12 - i * 0.015;
+      const lfo = audioCtx.createOscillator(), lg = audioCtx.createGain();
+      lfo.frequency.value = 0.2 + i * 0.08; lg.gain.value = 1.5;
+      lfo.connect(lg); lg.connect(osc.frequency); lfo.start();
+      osc.connect(g); g.connect(master); osc.start();
+    });
+    const sub = audioCtx.createOscillator(), sg = audioCtx.createGain();
+    sub.type = 'sine'; sub.frequency.value = 110; sg.gain.value = 0.06;
+    sub.connect(sg); sg.connect(master); sub.start();
+    bars.classList.remove('paused'); isPlaying = true; setMusicA11y(true);
   } else {
-    ytPlayer.pauseVideo();
-    isPlaying = false;
-    setMusicUI(false);
+    if (audioCtx) { audioCtx.close(); audioCtx = null; }
+    bars.classList.add('paused'); isPlaying = false; setMusicA11y(false);
   }
-}
-
-musicBtn?.addEventListener('click', () => {
-  // If the API hasn't initialized yet, queue the toggle.
-  if (!ytReady || !ytPlayer) {
-    pendingToggle = true;
-    return;
-  }
-  toggleMusic();
 });
 
 // ── Sparkle burst (tap anywhere while the finale is in view) ──
@@ -1105,6 +1091,5 @@ document.addEventListener('click', (e) => {
   sparkleBurst(e.clientX, e.clientY);
 });
 </script>
-<script src="https://www.youtube.com/iframe_api"></script>
 </body>
 </html>
