@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Our Scrapbook ✨</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Petit+Formal+Script&family=Raleway:wght@200;300;400;500&family=Caveat:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
@@ -40,6 +42,7 @@ html,body{width:100%;min-height:100vh;overflow-x:hidden;font-family:'Cormorant G
 /* Pages */
 .page{display:none;position:relative;z-index:10;padding-bottom:80px;min-height:calc(100vh - 100px)}
 .page.active{display:block}
+#pg-map{padding-bottom:60px}
 
 /* FAB */
 .fab{position:fixed;bottom:72px;right:20px;z-index:150;width:52px;height:52px;border-radius:50%;border:0;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;transition:.3s;box-shadow:0 4px 20px rgba(0,0,0,0.4)}
@@ -167,20 +170,39 @@ html,body{width:100%;min-height:100vh;overflow-x:hidden;font-family:'Cormorant G
 .prompt-history-title::after{content:'';flex:1;height:.5px;background:linear-gradient(90deg,var(--gm),transparent)}
 
 /* ══ MAP TAB ══ */
-.map-page{padding:20px 16px;max-width:500px;margin:0 auto}
-.map-distance{text-align:center;padding:30px 0}
-.map-miles{font-family:'Petit Formal Script',cursive;font-size:clamp(48px,12vw,80px);background:linear-gradient(135deg,var(--pl),var(--gs));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1}
-.map-miles-label{font-family:'Raleway',sans-serif;font-weight:200;font-size:11px;letter-spacing:6px;text-transform:uppercase;color:var(--pl);margin-top:4px}
-.map-connector{width:100%;height:50px;margin:16px 0}
-.map-connector svg{width:100%;height:100%}
-.map-sub{font-weight:300;font-style:italic;font-size:16px;color:var(--lav);text-align:center;margin-bottom:24px}
-.map-pins{display:flex;flex-direction:column;gap:10px}
-.map-pin{background:var(--card);border:.5px solid var(--cb);border-radius:12px;padding:14px;display:flex;align-items:flex-start;gap:12px}
+.map-page{padding:0;max-width:100%;margin:0 auto;overflow:hidden}
+.map-top-bar{padding:12px 16px;text-align:center;position:relative;z-index:10}
+.map-miles-row{display:flex;align-items:baseline;justify-content:center;gap:6px}
+.map-miles{font-family:'Petit Formal Script',cursive;font-size:36px;background:linear-gradient(135deg,var(--pl),var(--gs));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1}
+.map-miles-label{font-family:'Raleway',sans-serif;font-weight:200;font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--pl)}
+.map-sub{font-weight:300;font-style:italic;font-size:13px;color:var(--lav);margin-top:4px}
+#ourMap{width:100%;height:50vh;z-index:5;position:relative}
+.leaflet-container{background:var(--ink)!important;font-family:'Raleway',sans-serif}
+.leaflet-tile-pane{filter:saturate(0.4) brightness(0.7) contrast(1.1)!important}
+.leaflet-control-zoom a{background:var(--card)!important;color:var(--pl)!important;border-color:var(--cb)!important}
+.leaflet-control-attribution{display:none!important}
+.map-pin-list{max-height:200px;overflow-y:auto;padding:10px 14px}
+.map-pin{background:var(--card);border:.5px solid var(--cb);border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;cursor:pointer;transition:.2s}
+.map-pin:hover{background:rgba(123,47,190,.08)}
 .map-pin.him{border-left:2px solid var(--pr)}.map-pin.her{border-left:2px solid var(--gm)}
-.map-pin-icon{font-size:24px;flex-shrink:0}
-.map-pin-name{font-family:'Raleway',sans-serif;font-weight:400;font-size:14px;color:var(--sw);margin-bottom:2px}
-.map-pin-note{font-family:'Caveat',cursive;font-size:15px;color:var(--lav);line-height:1.4}
-.map-pin-who{font-family:'Raleway',sans-serif;font-weight:200;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--mut);margin-top:4px}
+.map-pin-icon{font-size:20px;flex-shrink:0}
+.map-pin-name{font-family:'Raleway',sans-serif;font-weight:400;font-size:13px;color:var(--sw);margin-bottom:1px}
+.map-pin-note{font-family:'Caveat',cursive;font-size:14px;color:var(--lav);line-height:1.3}
+.map-pin-who{font-family:'Raleway',sans-serif;font-weight:200;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--mut);margin-top:3px}
+.map-search{display:flex;gap:6px;padding:8px 14px}
+.map-search input{flex:1;background:rgba(255,255,255,.05);border:.5px solid var(--cb);border-radius:10px;padding:8px 12px;color:var(--sw);font-family:'Raleway',sans-serif;font-size:13px;outline:0}
+.map-search input:focus{border-color:var(--pl)}
+.map-search button{background:var(--pr);border:0;border-radius:10px;padding:8px 14px;color:#fff;font-family:'Raleway',sans-serif;font-size:12px;cursor:pointer;white-space:nowrap}
+.map-search-results{padding:0 14px;max-height:120px;overflow-y:auto}
+.map-sr{padding:8px 10px;background:var(--card);border:.5px solid var(--cb);border-radius:8px;margin-bottom:4px;cursor:pointer;font-family:'Raleway',sans-serif;font-size:12px;color:var(--lav);transition:.2s}
+.map-sr:hover{background:rgba(123,47,190,.1);color:var(--sw)}
+.custom-pin{display:flex;align-items:center;justify-content:center;font-size:22px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6))}
+.leaflet-popup-content-wrapper{background:var(--card)!important;color:var(--sw)!important;border:.5px solid var(--cb)!important;border-radius:12px!important;box-shadow:0 8px 30px rgba(0,0,0,.5)!important}
+.leaflet-popup-tip{background:var(--card)!important}
+.leaflet-popup-content{margin:10px 14px!important;font-family:'Caveat',cursive!important;font-size:16px!important;line-height:1.4!important}
+.popup-name{font-family:'Raleway',sans-serif;font-weight:400;font-size:13px;color:var(--pl);margin-bottom:4px}
+.popup-note{color:var(--lav)}
+.popup-who{font-family:'Raleway',sans-serif;font-weight:200;font-size:9px;color:var(--mut);margin-top:4px;letter-spacing:1px}
 
 /* ══ MODALS ══ */
 .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(8,6,14,.85);backdrop-filter:blur(8px);z-index:300;display:none;align-items:flex-end;justify-content:center}
@@ -296,7 +318,19 @@ html,body{width:100%;min-height:100vh;overflow-x:hidden;font-family:'Cormorant G
 </div>
 
 <div class="page" id="pg-map">
-  <div class="map-page" id="mapContent"></div>
+  <div class="map-page">
+    <div class="map-top-bar">
+      <div class="map-miles-row"><div class="map-miles">872</div><div class="map-miles-label">miles apart</div></div>
+      <div class="map-sub">Every pin is a piece of our story</div>
+    </div>
+    <div class="map-search">
+      <input type="text" id="mapSearchInput" placeholder="Search a place..." onkeydown="if(event.key==='Enter')searchPlace()">
+      <button onclick="searchPlace()">Search</button>
+    </div>
+    <div class="map-search-results" id="mapSearchResults"></div>
+    <div id="ourMap"></div>
+    <div class="map-pin-list" id="mapPinList"></div>
+  </div>
 </div>
 
 <!-- Tab Bar -->
@@ -343,15 +377,15 @@ html,body{width:100%;min-height:100vh;overflow-x:hidden;font-family:'Cormorant G
   </div>
 </div>
 
-<!-- Map Modal -->
+<!-- Map Pin Modal -->
 <div class="modal-overlay" id="mapModal">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title">Add a Place</div>
-    <div class="field"><div class="field-l">Place Name</div><input type="text" id="iMapName" placeholder="Arizona, our hometown..."></div>
+    <div class="modal-title">Drop a Pin</div>
+    <div class="field"><div class="field-l">Place</div><input type="text" id="iMapName" placeholder="Name this place..."></div>
     <div class="field"><div class="field-l">Emoji Pin</div><div id="mapEmojiRow" style="display:flex;gap:6px;flex-wrap:wrap"></div></div>
-    <div class="field"><div class="field-l">Memory</div><textarea id="iMapNote" placeholder="What happened here..." style="min-height:60px"></textarea></div>
-    <button class="sub-btn him" id="mapSubBtn" onclick="submitMapPin()">Drop a Pin</button>
+    <div class="field"><div class="field-l">Memory</div><textarea id="iMapNote" placeholder="What happened here... what does this place mean to us?" style="min-height:70px"></textarea></div>
+    <button class="sub-btn him" id="mapSubBtn" onclick="submitMapPin()">Drop Pin</button>
   </div>
 </div>
 
@@ -378,7 +412,7 @@ async function init() {
   prompts = await S.get('sb-prompts') || {};
   mapPins = await S.get('sb-map') || [];
   buildEmojiRows();
-  renderFeed(); renderPulse(); renderLetters(); renderPrompts(); renderMap();
+  renderFeed(); renderPulse(); renderLetters(); renderPrompts();
   startParticles(); startStarfield();
 }
 
@@ -403,7 +437,19 @@ function switchTab(t) {
   const fab = document.getElementById('fabBtn');
   if (t === 'feed') { fab.textContent = '+'; fab.onclick = openModal; fab.style.display = ''; }
   else if (t === 'letters') { fab.textContent = '✉'; fab.onclick = openLetterModal; fab.style.display = ''; }
-  else if (t === 'map') { fab.textContent = '📍'; fab.onclick = openMapModal; fab.style.display = ''; }
+  else if (t === 'map') {
+    fab.style.display = 'none';
+    // Leaflet needs the container visible and sized before init
+    requestAnimationFrame(() => {
+      if (!leafletMap) {
+        initMap();
+      }
+      // Aggressive retry to fix tile rendering
+      [100, 300, 600, 1000].forEach(ms => setTimeout(() => {
+        if (leafletMap) { leafletMap.invalidateSize(); renderMapPins(); }
+      }, ms));
+    });
+  }
   else { fab.style.display = 'none'; }
 }
 
@@ -931,42 +977,152 @@ function renderPrompts() {
 }
 
 // ═══ MAP ═══
+let leafletMap = null, mapMarkers = [], pendingLatLng = null;
+
+function initMap() {
+  if (leafletMap) return;
+  // Safety check: is Leaflet loaded?
+  if (typeof L === 'undefined') {
+    console.warn('Leaflet not loaded yet, retrying...');
+    setTimeout(initMap, 500);
+    return;
+  }
+  const container = document.getElementById('ourMap');
+  if (!container || container.offsetHeight === 0) {
+    console.warn('Map container not visible yet, retrying...');
+    setTimeout(initMap, 300);
+    return;
+  }
+  try {
+    leafletMap = L.map('ourMap', {
+      center: [37.5, -95], zoom: 4,
+      zoomControl: true, attributionControl: false
+    });
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19, subdomains: 'abcd'
+    }).addTo(leafletMap);
+
+    // Also add OpenStreetMap as fallback
+    leafletMap.on('tileerror', function() {
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19
+      }).addTo(leafletMap);
+    });
+
+  // Tap-to-drop: long press or click on map
+  leafletMap.on('click', function(e) {
+    if (!W) { flashWho(); return; }
+    pendingLatLng = e.latlng;
+    // Reverse geocode to get place name
+    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${e.latlng.lat}&lon=${e.latlng.lng}&format=json`)
+      .then(r => r.json())
+      .then(data => {
+        const name = data.address?.city || data.address?.town || data.address?.village || data.address?.state || data.display_name?.split(',')[0] || 'Unnamed Place';
+        document.getElementById('iMapName').value = name;
+        openMapModal();
+      })
+      .catch(() => {
+        document.getElementById('iMapName').value = `${e.latlng.lat.toFixed(3)}, ${e.latlng.lng.toFixed(3)}`;
+        openMapModal();
+      });
+  });
+  } catch(err) { console.error('Map init failed:', err); leafletMap = null; }
+}
+
+function searchPlace() {
+  const q = document.getElementById('mapSearchInput').value.trim();
+  if (!q) return;
+  fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5`)
+    .then(r => r.json())
+    .then(results => {
+      const el = document.getElementById('mapSearchResults');
+      if (!results.length) { el.innerHTML = '<div class="map-sr" style="color:var(--mut)">No results found</div>'; return; }
+      el.innerHTML = results.map(r => 
+        `<div class="map-sr" onclick="selectSearchResult(${r.lat},${r.lon},'${esc(r.display_name.split(',')[0]).replace(/'/g,"\\'")}')">${esc(r.display_name)}</div>`
+      ).join('');
+    })
+    .catch(() => {});
+}
+
+function selectSearchResult(lat, lng, name) {
+  if (!W) { flashWho(); return; }
+  document.getElementById('mapSearchResults').innerHTML = '';
+  document.getElementById('mapSearchInput').value = '';
+  pendingLatLng = { lat, lng };
+  leafletMap.flyTo([lat, lng], 10, { duration: 1.2 });
+  document.getElementById('iMapName').value = name;
+  openMapModal();
+}
+
 function openMapModal() {
   if (!W) { flashWho(); return; }
+  document.getElementById('mapSubBtn').className = 'sub-btn ' + W;
   document.getElementById('mapModal').classList.add('open');
 }
+
 function submitMapPin() {
-  const name = v('iMapName'); if (!name) return;
-  mapPins.push({ id: uid(), who: W, name, emoji: selEmoji, note: v('iMapNote'), time: new Date().toISOString() });
+  const name = v('iMapName'); if (!name || !pendingLatLng) return;
+  mapPins.push({
+    id: uid(), who: W, name, emoji: selEmoji, note: v('iMapNote'),
+    lat: pendingLatLng.lat, lng: pendingLatLng.lng,
+    time: new Date().toISOString()
+  });
   S.set('sb-map', mapPins); closeModal('mapModal');
   document.getElementById('iMapName').value = '';
   document.getElementById('iMapNote').value = '';
-  renderMap(); burst();
+  pendingLatLng = null;
+  renderMapPins(); burst();
 }
-function renderMap() {
-  const el = document.getElementById('mapContent');
-  let html = `<div class="map-distance">
-    <div class="map-miles">872</div>
-    <div class="map-miles-label">Miles Apart</div>
-    <div class="map-connector"><svg viewBox="0 0 400 50" preserveAspectRatio="none">
-      <defs><linearGradient id="mg" x1="0%" x2="100%"><stop offset="0%" stop-color="#7B2FBE"/><stop offset="50%" stop-color="#39ff14"/><stop offset="100%" stop-color="#7B2FBE"/></linearGradient></defs>
-      <circle cx="20" cy="25" r="5" fill="#39ff14" style="filter:drop-shadow(0 0 6px rgba(57,255,20,.4))"/>
-      <path d="M 28 25 Q 200 2,372 25" stroke="url(#mg)" stroke-width="1.5" fill="none" stroke-dasharray="8 6" style="animation:dashMove 2s linear infinite"/>
-      <circle cx="380" cy="25" r="5" fill="#c792ea" style="filter:drop-shadow(0 0 6px rgba(123,47,190,.4))"/>
-    </svg></div>
-    <div class="map-sub">But not a single mile has ever been enough to erase us.</div>
-  </div>`;
+
+function renderMapPins() {
+  // Clear existing markers
+  mapMarkers.forEach(m => leafletMap.removeLayer(m));
+  mapMarkers = [];
+
+  // Add markers for each pin
+  mapPins.forEach(p => {
+    if (!p.lat || !p.lng) return;
+    const color = p.who === 'him' ? '#7B2FBE' : '#4ae08a';
+    const icon = L.divIcon({
+      className: 'custom-pin',
+      html: `<div style="width:36px;height:36px;border-radius:50% 50% 50% 0;background:${color};transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 14px rgba(0,0,0,.5);border:2px solid rgba(255,255,255,.2)"><span style="transform:rotate(45deg);font-size:16px">${p.emoji||'📍'}</span></div>`,
+      iconSize: [36, 36],
+      iconAnchor: [18, 36],
+      popupAnchor: [0, -36]
+    });
+    const marker = L.marker([p.lat, p.lng], { icon }).addTo(leafletMap);
+    const popupContent = `<div class="popup-name">${esc(p.name)}</div>${p.note?`<div class="popup-note">${esc(p.note)}</div>`:''}<div class="popup-who">${p.who==='him'?'Him 💜':'Her 💚'} • ${fTime(p.time)}</div>`;
+    marker.bindPopup(popupContent);
+    mapMarkers.push(marker);
+  });
+
+  // Draw a dashed line between the two most recent him/her pins
+  const himPin = mapPins.filter(p => p.who==='him' && p.lat).slice(-1)[0];
+  const herPin = mapPins.filter(p => p.who==='her' && p.lat).slice(-1)[0];
+  if (himPin && herPin) {
+    const line = L.polyline([[himPin.lat, himPin.lng],[herPin.lat, herPin.lng]], {
+      color: '#c792ea', weight: 1.5, dashArray: '8, 8', opacity: 0.5
+    }).addTo(leafletMap);
+    mapMarkers.push(line);
+  }
+
+  // Fit bounds if pins exist
+  if (mapPins.filter(p => p.lat).length) {
+    const bounds = L.latLngBounds(mapPins.filter(p => p.lat).map(p => [p.lat, p.lng]));
+    leafletMap.fitBounds(bounds.pad(0.3));
+  }
+
+  // Render pin list
+  const listEl = document.getElementById('mapPinList');
   if (mapPins.length) {
-    html += `<div class="letters-section-title">Our Places</div>`;
-    html += `<div class="map-pins">${mapPins.map(p => `<div class="map-pin ${p.who}">
+    listEl.innerHTML = mapPins.map(p => `<div class="map-pin ${p.who}" onclick="${p.lat?`leafletMap.flyTo([${p.lat},${p.lng}],12,{duration:1})`:''}" style="cursor:${p.lat?'pointer':'default'}">
       <div class="map-pin-icon">${p.emoji||'📍'}</div>
       <div style="flex:1"><div class="map-pin-name">${esc(p.name)}</div>${p.note?`<div class="map-pin-note">${esc(p.note)}</div>`:''}<div class="map-pin-who">${p.who==='him'?'Him 💜':'Her 💚'} • ${fTime(p.time)}</div></div>
-    </div>`).join('')}</div>`;
-  } else {
-    html += `<div class="empty" style="min-height:30vh"><div class="empty-icon">📍</div><div class="empty-title">No Places Yet</div><div class="empty-sub">Drop pins for the places that matter — where you grew up, Arizona, everywhere in between.</div></div>`;
-  }
-  el.innerHTML = html;
+    </div>`).join('');
+  } else { listEl.innerHTML = ''; }
 }
+
+function renderMap() { /* handled by renderMapPins after init */ }
 
 // ═══ DELETE ═══
 function cfmDel(id) {
